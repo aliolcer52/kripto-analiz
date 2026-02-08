@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piyasa Akış Analizi</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0b0e11;
+            color: #eaecef;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #1e2329;
+            min-height: 100vh;
+            padding-bottom: 50px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 25px;
+            background-color: #1e2329;
+            border-bottom: 1px solid #2b3139;
+        }
+
+        h1 { margin: 0; font-size: 1.4rem; font-weight: 600; color: #fcd535; }
+        .subtitle { color: #848e9c; font-size: 0.8rem; }
+
+        /* TABS */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #2b3139;
+            background-color: #181b21;
+        }
+
+        .tab-btn {
+            padding: 15px 25px;
+            background: transparent;
+            border: none;
+            color: #848e9c;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover { color: #fff; background-color: #262b33; }
+        .tab-btn.active {
+            color: #fcd535;
+            border-bottom-color: #fcd535;
+            background-color: #1e2329;
+        }
+
+        /* TAB CONTENT */
+        .tab-content { display: none; padding: 20px; }
+        .tab-content.active { display: block; }
+
+        /* --- MATRIX TAB STYLES --- */
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .matrix-table th {
+            text-align: center;
+            padding: 12px 8px;
+            color: #848e9c;
+            border-bottom: 2px solid #2b3139;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .matrix-table th:first-child { text-align: left; width: 120px; }
+        .matrix-table th:nth-child(2) { text-align: right; width: 100px; }
+
+        .matrix-table td {
+            padding: 8px;
+            border-bottom: 1px solid #2b3139;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .matrix-table tr:hover { background-color: #262b33; }
+
+        .bar-container {
+            width: 100%;
+            height: 24px;
+            background-color: #2b3139;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .bar-fill {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.8rem;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+        }
+        .bg-green { background: linear-gradient(180deg, #00e676 0%, #00c853 100%); color: #002211; }
+        .bg-red { background: linear-gradient(180deg, #ff5252 0%, #d32f2f 100%); color: #ffffff; }
+        .text-green { color: #00e676; }
+        .text-red { color: #ff5252; }
+        .net-flow-text {
+            font-size: 0.75rem;
+            margin-top: 4px;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        .coin-name { font-weight: bold; font-size: 1rem; color: #fff; }
+        .price-text { color: #eaecef; font-family: 'Courier New', monospace; font-weight: bold; }
+
+        /* --- CHART TAB STYLES --- */
+        .chart-container {
+            background-color: #181b21;
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chart-value-box {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .value-item {
+            background-color: #262b33;
+            padding: 10px 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .value-label { font-size: 0.7rem; color: #848e9c; text-transform: uppercase; }
+        .value-number { font-size: 1.1rem; font-weight: bold; font-family: 'Courier New', monospace; }
+
+        .chart-canvas-container {
+            width: 100%;
+            height: 400px;
+            background: #0b0e11;
+            border-radius: 6px;
+            border: 1px solid #2b3139;
+            position: relative;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+        
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 2px; }
+
+        .btn-refresh {
+            background-color: #2b3139;
+            color: white;
+            border: 1px solid #444;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-refresh:hover { background-color: #363c45; }
+        .btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+            color: white;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #fcd535;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .status-badge {
+            background-color: #0ecb81;
+            color: #002211;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+        .status-badge.negative { background-color: #ff5252; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="loading-overlay" id="loader">
+        <div class="spinner"></div>
+        <div>Veriler Yükleniyor...</div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div>
+                <h1>📊 Piyasa Akış Paneli</h1>
+                <div class="subtitle">Multi-Timeframe Analiz & Canlı Trend</div>
+            </div>
+            <button class="btn-refresh" onclick="refreshAll()">⟳ Tümünü Yenile</button>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('matrix')">📈 Akış Matrisi</button>
+            <button class="tab-btn" onclick="switchTab('chart')">📉 Canlı Trend</button>
+        </div>
+
+        <!-- TAB 1: MATRIX -->
+        <div id="tab-matrix" class="tab-content active">
+            <table class="matrix-table">
+                <thead>
+                    <tr>
+                        <th>Coin</th>
+                        <th>Fiyat</th>
+                        <th>15 Dakika</th>
+                        <th>1 Saat</th>
+                        <th>4 Saat</th>
+                        <th>24 Saat</th>
+                    </tr>
+                </thead>
+                <tbody id="matrixBody">
+                    <tr><td colspan="6" style="text-align:center; padding: 40px; color: #666;">Yükleniyor...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TAB 2: CHART -->
+        <div id="tab-chart" class="tab-content">
+            
+            <!-- 15 Dakikalık Grafik -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div>
+                        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 4px;">📊 Toplam Para Akış - 15 Dakikalık Barlar</div>
+                        <div style="font-size: 0.8rem; color: #848e9c;">Her çubuk 15 dakikalık net giriş/çıkışı gösterir</div>
+                    </div>
+                    <div class="chart-value-box">
+                        <div class="value-item">
+                            <div class="value-label">Son 15dk</div>
+                            <div class="value-number" id="currentFlow15m">--</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-canvas-container">
+                    <canvas id="flowChart15m"></canvas>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #0ecb81;"></div>
+                        <span><b>Yeşil Çubuk:</b> Para Girişi (Alış > Satış)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #f6465d;"></div>
+                        <span><b>Kırmızı Çubuk:</b> Para Çıkışı (Satış > Alış)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 1 Saatlik Grafik -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div>
+                        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 4px;">📊 Toplam Para Akış - 1 Saatlik Barlar</div>
+                        <div style="font-size: 0.8rem; color: #848e9c;">Her çubuk 1 saatlik net giriş/çıkışı gösterir</div>
+                    </div>
+                    <div class="chart-value-box">
+                        <div class="value-item">
+                            <div class="value-label">Son 1s</div>
+                            <div class="value-number" id="currentFlow1h">--</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-canvas-container">
+                    <canvas id="flowChart1h"></canvas>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #0ecb81;"></div>
+                        <span><b>Yeşil Çubuk:</b> Para Girişi (Alış > Satış)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #f6465d;"></div>
+                        <span><b>Kırmızı Çubuk:</b> Para Çıkışı (Satış > Alış)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 4 Saatlik Grafik -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div>
+                        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 4px;">📊 Toplam Para Akış - 4 Saatlik Barlar</div>
+                        <div style="font-size: 0.8rem; color: #848e9c;">Her çubuk 4 saatlik net giriş/çıkışı gösterir</div>
+                    </div>
+                    <div class="chart-value-box">
+                        <div class="value-item">
+                            <div class="value-label">Son 4s</div>
+                            <div class="value-number" id="currentFlow4h">--</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-canvas-container">
+                    <canvas id="flowChart4h"></canvas>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #0ecb81;"></div>
+                        <span><b>Yeşil Çubuk:</b> Para Girişi (Alış > Satış)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #f6465d;"></div>
+                        <span><b>Kırmızı Çubuk:</b> Para Çıkışı (Satış > Alış)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Günlük Grafik -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div>
+                        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 4px;">📊 Toplam Para Akış - Günlük Barlar</div>
+                        <div style="font-size: 0.8rem; color: #848e9c;">Her çubuk günlük net giriş/çıkışı gösterir</div>
+                    </div>
+                    <div class="chart-value-box">
+                        <div class="value-item">
+                            <div class="value-label">Son 1g</div>
+                            <div class="value-number" id="currentFlow1d">--</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-canvas-container">
+                    <canvas id="flowChart1d"></canvas>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #0ecb81;"></div>
+                        <span><b>Yeşil Çubuk:</b> Para Girişi (Alış > Satış)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #f6465d;"></div>
+                        <span><b>Kırmızı Çubuk:</b> Para Çıkışı (Satış > Alış)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px; color: #666; font-size: 0.8rem;">
+                <b>Nasıl Okunur?</b> Her çubuk o periyottaki toplam para hareketini gösterir. 
+                Çubuk ne kadar yüksekse, o kadar fazla para girişi/çıkışı olmuştur.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GLOBALS ---
+        const EXCLUDED = ['USDT', 'USDC', 'FDUSD', 'TUSD', 'DAI', 'USDP', 'EUR', 'BUSD', 'WBTC'];
+        const intervals = ['15m', '1h', '4h', '1d'];
+        
+        let chartData15m = JSON.parse(localStorage.getItem('chartData_15m')) || []; 
+        let chartData1h = JSON.parse(localStorage.getItem('chartData_1h')) || []; 
+        let chartData4h = JSON.parse(localStorage.getItem('chartData_4h')) || []; 
+        let chartData1d = JSON.parse(localStorage.getItem('chartData_1d')) || []; 
+        
+        // Tarih string'lerini Date objesine çevir
+        [chartData15m, chartData1h, chartData4h, chartData1d].forEach(data => {
+            data.forEach(item => {
+                if (typeof item.time === 'string') {
+                    item.time = new Date(item.time);
+                }
+            });
+        });
+        
+        let chartInterval = null;
+        let isChartActive = false;
+        let lastCandleTimes = { '15m': 0, '1h': 0, '4h': 0, '1d': 0 };
+
+        // Formatters
+        const moneyFmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        const priceFmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+
+        // --- TAB SWITCHING ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+
+            if (tabName === 'chart') {
+                isChartActive = true;
+                // Sekme değiştirildiğinde grafikleri gecikmeli çiz
+                setTimeout(() => {
+                    startChartUpdates();
+                }, 100);
+            } else {
+                isChartActive = false;
+            }
+        }
+
+        // --- MATRIX FUNCTIONS ---
+        async function loadMatrix() {
+            const tbody = document.getElementById('matrixBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 40px; color: #666;">Yükleniyor...</td></tr>';
+
+            try {
+                const tickerRes = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+                const tickerData = await tickerRes.json();
+                
+                let pairs = tickerData.filter(p => p.symbol.endsWith('USDT') && !EXCLUDED.some(x => p.symbol.startsWith(x)));
+                pairs.sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume)); 
+                const topCoins = pairs.slice(0, 20);
+
+                tbody.innerHTML = '';
+                
+                for (const coin of topCoins) {
+                    const rowData = await processCoinMatrix(coin);
+                    renderMatrixRow(rowData, tbody);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function processCoinMatrix(coin) {
+            const requests = intervals.map(interval => 
+                fetch(`https://api.binance.com/api/v3/klines?symbol=${coin.symbol}&interval=${interval}&limit=1`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data || data.length === 0) return { net: 0, buyPct: 50 };
+                    const k = data[0];
+                    const total = parseFloat(k[7]);
+                    const buy = parseFloat(k[10]);
+                    const net = buy - (total - buy);
+                    return { net, buyPct: total > 0 ? (buy / total) * 100 : 50 };
+                })
+            );
+
+            const results = await Promise.all(requests);
+            return {
+                symbol: coin.symbol.replace('USDT', ''),
+                price: parseFloat(coin.lastPrice),
+                data: results
+            };
+        }
+
+        function renderMatrixRow(coinData, tbody) {
+            const tr = document.createElement('tr');
+            let cellsHTML = `
+                <td style="text-align: left;"><div class="coin-name">${coinData.symbol}</div></td>
+                <td style="text-align: right;" class="price-text">$${priceFmt.format(coinData.price)}</td>
+            `;
+
+            coinData.data.forEach(tf => {
+                const buyPct = tf.buyPct;
+                const isBuyDominant = buyPct >= 50;
+                const displayPct = isBuyDominant ? buyPct : (100 - buyPct);
+                const barColor = isBuyDominant ? 'bg-green' : 'bg-red';
+                const netColor = isBuyDominant ? 'text-green' : 'text-red';
+                const sign = isBuyDominant ? '+' : '-';
+                
+                cellsHTML += `
+                    <td>
+                        <div class="bar-container">
+                            <div class="bar-fill ${barColor}" style="width: ${displayPct}%">%${displayPct.toFixed(0)}</div>
+                        </div>
+                        <div class="net-flow-text ${netColor}">${sign}$${moneyFmt.format(Math.abs(tf.net))}</div>
+                    </td>
+                `;
+            });
+
+            tr.innerHTML = cellsHTML;
+            tbody.appendChild(tr);
+        }
+
+        // --- CHART FUNCTIONS ---
+
+        function startChartUpdates() {
+            // Önceki interval'ı temizle
+            if (chartInterval) clearInterval(chartInterval);
+            
+            // İlk çalıştırma
+            updateAllCharts();
+            
+            // Periyodik güncelleme - her 10 saniye
+            chartInterval = setInterval(() => {
+                if (isChartActive) updateAllCharts();
+            }, 10000);
+        }
+
+        async function updateAllCharts() {
+            await Promise.all([
+                updateChartData('15m', chartData15m, 'currentFlow15m'),
+                updateChartData('1h', chartData1h, 'currentFlow1h'),
+                updateChartData('4h', chartData4h, 'currentFlow4h'),
+                updateChartData('1d', chartData1d, 'currentFlow1d')
+            ]);
+            
+            // Tüm grafikleri çiz
+            drawChart('flowChart15m', chartData15m, '15m');
+            drawChart('flowChart1h', chartData1h, '1h');
+            drawChart('flowChart4h', chartData4h, '4h');
+            drawChart('flowChart1d', chartData1d, '1d');
+        }
+
+        async function updateChartData(interval, chartData, currentFlowId) {
+            try {
+                const tickerRes = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+                const tickerData = await tickerRes.json();
+                
+                let pairs = tickerData.filter(p => p.symbol.endsWith('USDT') && !EXCLUDED.some(x => p.symbol.startsWith(x)));
+                pairs.sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume)); 
+                const topCoins = pairs.slice(0, 20);
+
+                let totalNetFlow = 0;
+                let currentCandleTime = 0;
+
+                const requests = topCoins.map(c => 
+                    fetch(`https://api.binance.com/api/v3/klines?symbol=${c.symbol}&interval=${interval}&limit=1`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!data || data.length === 0) return { flow: 0, time: 0 };
+                        const k = data[0];
+                        const total = parseFloat(k[7]);
+                        const buy = parseFloat(k[10]);
+                        return { 
+                            flow: buy - (total - buy),
+                            time: k[0]
+                        };
+                    })
+                );
+
+                const results = await Promise.all(requests);
+                
+                currentCandleTime = results[0]?.time || 0;
+                totalNetFlow = results.reduce((a, b) => a + b.flow, 0);
+
+                if (currentCandleTime !== lastCandleTimes[interval]) {
+                    chartData.push({
+                        time: new Date(currentCandleTime),
+                        value: totalNetFlow
+                    });
+                    lastCandleTimes[interval] = currentCandleTime;
+                    
+                    if (chartData.length > 20) chartData.shift();
+                    
+                    // Verileri localStorage'a kaydet
+                    localStorage.setItem('chartData_' + interval, JSON.stringify(chartData));
+                } else {
+                    if (chartData.length > 0) {
+                        chartData[chartData.length - 1].value = totalNetFlow;
+                    }
+                }
+
+                document.getElementById(currentFlowId).textContent = (totalNetFlow >= 0 ? '+' : '') + '$' + moneyFmt.format(totalNetFlow);
+                document.getElementById(currentFlowId).className = 'value-number ' + (totalNetFlow >= 0 ? 'text-green' : 'text-red');
+
+            } catch (err) {
+                console.error(`Chart update error for ${interval}:`, err);
+            }
+        }
+
+        function drawChart(canvasId, chartData, interval) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const container = canvas.parentElement;
+            
+            // Canvas boyutlarını container'a göre ayarla
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            if (containerWidth === 0 || containerHeight === 0) return;
+            
+            canvas.width = containerWidth * 2;
+            canvas.height = containerHeight * 2;
+            canvas.style.width = containerWidth + 'px';
+            canvas.style.height = containerHeight + 'px';
+            
+            ctx.scale(2, 2);
+            
+            const width = containerWidth;
+            const height = containerHeight;
+            const padding = { top: 60, bottom: 50, left: 80, right: 20 };
+            const chartW = width - padding.left - padding.right;
+            const chartH = height - padding.top - padding.bottom;
+
+            // Arkaplanı temizle
+            ctx.fillStyle = '#0b0e11';
+            ctx.fillRect(0, 0, width, height);
+
+            if (chartData.length === 0) {
+                ctx.fillStyle = '#666';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Veri yükleniyor...', width / 2, height / 2);
+                return;
+            }
+
+            const values = chartData.map(d => d.value);
+            const maxAbs = Math.max(...values.map(Math.abs));
+            const yScale = maxAbs > 0 ? maxAbs : 1;
+
+            const zeroY = padding.top + chartH / 2;
+            
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, zeroY);
+            ctx.lineTo(width - padding.right, zeroY);
+            ctx.stroke();
+
+            ctx.fillStyle = '#848e9c';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText('+$' + formatCompact(yScale), padding.left - 10, padding.top + 10);
+            ctx.fillText('0', padding.left - 10, zeroY + 4);
+            ctx.fillText('-$' + formatCompact(yScale), padding.left - 10, padding.top + chartH - 5);
+
+            ctx.strokeStyle = '#2b3139';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            
+            ctx.beginPath();
+            ctx.moveTo(padding.left, padding.top + chartH * 0.25);
+            ctx.lineTo(width - padding.right, padding.top + chartH * 0.25);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(padding.left, padding.top + chartH * 0.75);
+            ctx.lineTo(width - padding.right, padding.top + chartH * 0.75);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+
+            const barWidth = (chartW / chartData.length) * 0.7;
+            const gap = (chartW / chartData.length) * 0.3;
+            
+            chartData.forEach((point, i) => {
+                const x = padding.left + (i * (chartW / chartData.length)) + (gap / 2);
+                const isPositive = point.value >= 0;
+                const barHeight = (Math.abs(point.value) / yScale) * (chartH / 2);
+                
+                ctx.fillStyle = isPositive ? '#0ecb81' : '#f6465d';
+                
+                if (isPositive) {
+                    ctx.fillRect(x, zeroY - barHeight, barWidth, barHeight);
+                } else {
+                    ctx.fillRect(x, zeroY, barWidth, barHeight);
+                }
+                
+                if (barHeight > 20) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 11px Arial';
+                    ctx.textAlign = 'center';
+                    
+                    const valueText = (isPositive ? '+' : '-') + '$' + formatCompact(Math.abs(point.value));
+                    
+                    if (isPositive) {
+                        ctx.fillText(valueText, x + barWidth / 2, zeroY - barHeight + 15);
+                    } else {
+                        ctx.fillText(valueText, x + barWidth / 2, zeroY + barHeight - 8);
+                    }
+                }
+                
+                if (i % Math.ceil(chartData.length / 6) === 0 || i === chartData.length - 1) {
+                    ctx.fillStyle = '#848e9c';
+                    ctx.font = '10px Arial';
+                    ctx.textAlign = 'center';
+                    const timeStr = formatTimeLabel(point.time, interval);
+                    ctx.fillText(timeStr, x + barWidth / 2, height - 20);
+                }
+            });
+
+            ctx.fillStyle = '#fcd535';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('Net Para Akışı ($)', padding.left, 25);
+        }
+
+        function formatTimeLabel(date, interval) {
+            const h = date.getHours().toString().padStart(2, '0');
+            const m = date.getMinutes().toString().padStart(2, '0');
+            const d = date.getDate().toString().padStart(2, '0');
+            const mo = (date.getMonth() + 1).toString().padStart(2, '0');
+            
+            if (interval === '1d') {
+                return `${d}/${mo}`;
+            }
+            return `${h}:${m}`;
+        }
+
+        function formatCompact(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toFixed(0);
+        }
+
+        function refreshAll() {
+            // Sadece Akış Matrisi sekmesini yenile
+            loadMatrix();
+        }
+
+        // Initialize
+        loadMatrix();
+        
+        window.addEventListener('beforeunload', () => {
+            if (chartInterval) clearInterval(chartInterval);
+        });
+
+        window.addEventListener('resize', () => {
+            if (isChartActive) {
+                drawChart('flowChart15m', chartData15m, '15m');
+                drawChart('flowChart1h', chartData1h, '1h');
+                drawChart('flowChart4h', chartData4h, '4h');
+                drawChart('flowChart1d', chartData1d, '1d');
+            }
+        });
+    </script>
+</body>
+</html>
